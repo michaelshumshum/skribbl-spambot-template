@@ -3,6 +3,8 @@ torment children...for fun!
 ## about
 use this if you are, like me for some reason, looking to create spam bots for skribblio. i have made a few in the past using selenium, but i decided to switch to pyppeteer, which is, my experience, more efficient at this task. you can do whatever you want with this template and use it however you like. if you merely want to make a quick bot with no additinal features, you can change the name of the bots, the messages the bots send, and the number of bots. though, there is still quite a little bit of potential with this, for example draw bots and autoguessers, but i haven't had the intention of doing that, so feel free to do that yourself.
 
+it is uncertain how long the bots can run. i have run them overnight multiple times and it ranges from a couple hours to pretty much infinitely. 
+
 ## prerequisites
 install the npyscreen and pyppeteer modules. you can also just run `pip3 install -r requirements.txt` on the provided file. after that, make sure to run `pyppeteer-install` to install the required chromium version for pyppeteer. 
 
@@ -13,13 +15,15 @@ all other changes to the code will not guarantee it to work, so anything you do 
 ## some questions you may have:
 #### why did i do this?
 i like making bots. it's fun.
+#### what's better about this than other bots?
+nothing really.  but i do believe most bots do not have player count detection, which i think is quite nifty. it also comes with a simple 'interface' that gets you some information of the games the bots are in and hihglights them.
 #### why does it use pyppeteer?
 in the past, i used selenium for the bots because i had not known about pyppeteer, a puppeteer port to python. selenium is completely capable of making these bots, but after using pyppeteer, it was apparent how much more efficient pyppeteer was, especially dealing with so many instances of it. some benefits i found were:
 - fewer crashes and exceptions
 - faster execution in general
 - better headless mode
 - supports and requires asyncio, which is a lot more reliable in my opinion
-- allows javascript evaluation
+- allows javascript evaluation, which is exponentially useful for typing in text and getting text
 
 by far, pyppeteer is a lot quicker and consistent. you can compare it to my older bots and see how often those bots crash and how slow they were. if you plan to do any sort of web scraping or crawling, i would highly recommend using pyppeteer due to its versatility and benefits overall.
 #### what else can this bot do?
