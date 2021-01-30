@@ -20,6 +20,7 @@ in the past, i used selenium for the bots because i had not known about pyppetee
 - better headless mode
 - supports and requires asyncio, which is a lot more reliable in my opinion
 - allows javascript evaluation
+
 by far, pyppeteer is a lot quicker and consistent. you can compare it to my older bots and see how often those bots crash and how slow they were. if you plan to do any sort of web scraping or crawling, i would highly recommend using pyppeteer due to its versatility and benefits overall.
 #### what else can this bot do?
 not much. it doesn't have any "hack" features and just meant to be annoying. though, since it uses pyppeteer, which has mousemovement support, a drawbot is possible. a guessing bot is would be pretty easy as it just uses the chat.
