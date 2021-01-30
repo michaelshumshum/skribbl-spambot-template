@@ -1,0 +1,1 @@
+# skribbl-spambot-template
