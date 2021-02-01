@@ -8,7 +8,12 @@ it is uncertain how long the bots can run. i have run them overnight multiple ti
 ## prerequisites
 install the npyscreen and pyppeteer modules. you can also just run `pip3 install -r requirements.txt` on the provided file. after that, make sure to run `pyppeteer-install` to install the required chromium version for pyppeteer. 
 
-in the code, indicate the name and messages for the bot. if the name is left blank, skribbl will generate a random name. if the messages are left blank, well nothing will be sent by the bots, as expected. the default number of bots is 6, but you can change this. though, when changing this, you have to change the `count` variable in both `bot.py` and the `self.count` variable in `Form` class within `interface.py`. as of now, the interface only supports 4+ bots as i haven't implemented single row layouts, which is something i plan to do in the next few days. there is potentially limit on the number of bots, it's only limited by the power of your computer. 
+## usage
+in the code, indicate the name and messages for the bot. if the name is left blank, skribbl will generate a random name. the default number of bots is 6, but you can change this. though, when changing this, you have to change the `count` variable in both `bot.py` and the `self.count` variable in `Form` class within `interface.py`. as of now, the interface only supports 4+ bots as i haven't implemented single row layouts, which is something i plan to do in the next few days. there is potentially limit on the number of bots, it's only limited by the power of your computer. 
+
+in the 'messages' folder, there are three text files where the respective messages are stored. separate the messages by line breaks. for the targetted and antibot messages, use `placeholder` as the literal placeholder for the target. the bots will automatically replace those `placeholder` with the name of the target. 
+#### how the bots decide what messages to send
+one 'cycle' can be considered to be all the normal messages. for every message that is sent, there is a 1/3 chance that the bot will also send a targetted message. this can be easily changed by changing the values in the `flip_coin` function. if there is another bot present in the game, the bot will send an antibot message no matter what. 
 
 all other changes to the code will not guarantee it to work, so anything you do with it outside of those few variables is for you to figure out. though, i am happy to get suggestions and some ideas on what to add/change to the template.
 
