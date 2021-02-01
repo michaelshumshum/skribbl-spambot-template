@@ -10,7 +10,13 @@ from interface import Form
 
 name = ''
 count = 6
-messages = ['']
+bot_blacklist = ['bot']
+
+def flip_coin():
+    if random.randint(0,2) == 0:
+        return True
+    else:
+        return False
 
 class bot:
     def __init__(self,queue,name='',url='https://skribbl.io/'):
@@ -18,6 +24,7 @@ class bot:
         self.name = name
         self.queue = queue
         self.player_count = 0
+        self.player_list = []
         self.flags = [
         '--no-sandbox',
         '--mute-audio',
@@ -55,33 +62,73 @@ class bot:
         player_box = await element.boxModel()
         return int(player_box['height'] / 48)
 
+    async def antibot(self):
+        bots = [string for string in self.player_list if any(item in string.lower() for item in bot_blacklist)]
+        try:
+            await self.send_chat(random.choice(self.antibot_messages).replace('placeholder',random.choice(bots)))
+            await asyncio.sleep(0.8)
+        except:
+            pass
+    async def get_player_list(self):
+        names = []
+        try: #If this function gets run when a player leaves, it will return an exception.
+            for i in range(self.player_count):
+                name = await self.page.evaluate(f'() => document.getElementsByClassName("info")[{i+1}].innerText')
+                if self.name in name:
+                    continue
+                name = name.replace('\n','')
+                x = name.find('Points')
+                name = str(name[:x])
+                names.append(name)
+            if names != self.player_list:
+                self.player_list = names
+        except:
+            pass
+
     async def check_spam(self):
         try:
             chat = await self.page.evaluate('() => document.getElementById("boxMessages").innerText')
             text = chat.split('\n')
-            text = str(text[-2:])
+            text = str(text[-3:])
         except:
             text = ''
         if "Spam detected!" in text:
             return True
         else:
             return False
-
     async def chat_spam(self):
+        temp = open('messages/normal.txt','r')
+        self.normal_messages = temp.read().split('\n')
+        temp.close()
+        temp = open('messages/targetted.txt','r')
+        self.targetted_messages = temp.read().split('\n')
+        temp.close()
+        temp = open('messages/antibot.txt','r')
+        self.antibot_messages = temp.read().split('\n')
+        temp.close()
         while True:
             try:
-                random.shuffle(messages)
-                for message in messages:
-                    await self.votekick()
+                random.shuffle(self.normal_messages)
+                for message in self.normal_messages:
+                    await asyncio.gather(self.get_player_list(),self.votekick())
+                    await self.antibot()
+                    if (flip_coin() == True) and (self.player_list != []):
+                        player = str(random.choice(self.player_list))
+                        await self.send_chat(random.choice(self.targetted_messages).replace('placeholder',player))
+                        await asyncio.sleep(0.8)
                     await self.send_chat(message)
-                    await asyncio.sleep(0.4)
+                    await asyncio.sleep(0.8)
                     player_count = await self.get_player_count()
                     if await self.check_spam():
                         await asyncio.sleep(5)
                     if player_count < 2:
-                        raise Exception('disconnected')
+                        raise Exception('not enough players')
                         break
             except Exception as e:
+                if ('NoneType' in str(e)) or ('Node' in str(e)):
+                    self.queue.put("EXCEPTION: force disconnect due to kick")
+                else:
+                    self.queue.put("EXCEPTION: "+str(e))
                 break
 
     async def chat_updates(self):
@@ -127,6 +174,7 @@ class bot:
                     await asyncio.gather(self.chat_spam(),self.chat_updates())
                     self.queue.put('LEFT GAME')
                     self.player_count = 0
+                    self.player_list = []
             except Exception as e:
                 self.queue.put("EXCEPTION: "+str(e))
                 await self.browser.close()
