@@ -124,6 +124,7 @@ class Form(npyscreen.Form):
                         self.player_counts[index] = messages[1]
                     else:
                         for message in messages:
+                            widget.color = 'STANDOUT'
                             if message == '':
                                 continue
                             line = (f"{str(datetime.datetime.now())[11:-7]} > {message}"[:self.widget_width]).encode("ascii", errors="ignore").decode()
