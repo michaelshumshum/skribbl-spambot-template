@@ -3,14 +3,18 @@ import asyncio
 import random
 import queue
 import json
+import string
 from time import sleep
+from datetime import datetime
 from npyscreen import wrapper_basic
 from threading import Thread,Event
 from interface import Form
 
-name = ''
+names = ['bot']
 count = 6
-bot_blacklist = ['bot']
+temp = open('words.txt','r')
+words = temp.read().split('\n')
+temp.close()
 
 def flip_coin():
     if random.randint(0,2) == 0:
@@ -18,11 +22,18 @@ def flip_coin():
     else:
         return False
 
+def randomString(stringLength):
+	lettersAndDigits = string.ascii_letters + string.digits
+	return ''.join(random.choice(lettersAndDigits) for i in range(stringLength))
+
 class bot:
     def __init__(self,queue,name='',url='https://skribbl.io/'):
+        self.since_last_msg_time = datetime.now()
         self.url = url
         self.name = name
+        self.words = []
         self.queue = queue
+        self.valid_bots = []
         self.player_count = 0
         self.player_list = []
         self.flags = [
@@ -45,6 +56,8 @@ class bot:
         self.queue.put('START')
 
     async def join(self):
+        #self.name = randomString(10)
+        self.name = random.choice(names)
         await self.page.goto(self.url)
         await self.page.evaluate(f'() => document.getElementById("inputName").value = "{self.name}"')
         randomize = await self.page.waitFor('//*[@id="buttonAvatarCustomizerRandomize"]')
@@ -60,15 +73,29 @@ class bot:
     async def get_player_count(self):
         element = await self.page.waitFor('//*[@id="containerGamePlayers"]')
         player_box = await element.boxModel()
-        return int(player_box['height'] / 48)
+        if self.player_count != int(player_box['height'] / 48):
+            self.player_count = int(player_box['height'] / 48)
+            self.queue.put(f'[{self.player_count} PLAYERS_COUNT]')
+
+    async def drawing_check(self):
+        text = await self.page.evaluate('() => document.getElementById("currentWord").innerText')
+        if (not text) or ('_' in text):
+            return False
+        else:
+            return True
 
     async def antibot(self):
-        bots = [string for string in self.player_list if any(item in string.lower() for item in bot_blacklist)]
-        try:
-            await self.send_chat(random.choice(self.antibot_messages).replace('placeholder',random.choice(bots)))
-            await asyncio.sleep(0.8)
-        except:
-            pass
+        chat = await self.page.evaluate('() => document.getElementById("boxMessages").innerText')
+        chat = chat.split('\n')[-20:]
+        self.valid_bots = []
+        for bot in self.player_list:
+            lines = [string for string in chat if bot+':' in string]
+            autoguess = [line for line in lines if any(word in line for word in words)]
+            mentions = [line for line in lines if self.name in line]
+            if (mentions != []) or (len(autoguess) > 3):
+                self.valid_bots.append(bot)
+            else:
+                continue
     async def get_player_list(self):
         names = []
         try: #If this function gets run when a player leaves, it will return an exception.
@@ -106,47 +133,55 @@ class bot:
         temp = open('messages/antibot.txt','r')
         self.antibot_messages = temp.read().split('\n')
         temp.close()
-        while True:
+        while int(str(datetime.now() - self.since_last_msg_time)[2:4]) < 1:
             try:
                 random.shuffle(self.normal_messages)
                 for message in self.normal_messages:
-                    await asyncio.gather(self.get_player_list(),self.votekick())
-                    await self.antibot()
-                    if (flip_coin() == True) and (self.player_list != []):
-                        player = str(random.choice(self.player_list))
-                        await self.send_chat(random.choice(self.targetted_messages).replace('placeholder',player))
+                    await asyncio.gather(self.get_player_count(),self.get_player_list(),self.votekick(),self.antibot())
+                    if self.valid_bots == []:
+                        if (flip_coin() == True) and (self.player_list != []):
+                            player = str(random.choice(self.player_list))
+                            await self.send_chat(random.choice(self.targetted_messages).replace('placeholder',player))
+                            await asyncio.sleep(0.8)
+                        await self.send_chat(message)
                         await asyncio.sleep(0.8)
-                    await self.send_chat(message)
-                    await asyncio.sleep(0.8)
-                    player_count = await self.get_player_count()
+                    else:
+                        try:
+                            await self.send_chat(random.choice(self.antibot_messages).replace('placeholder',random.choice(self.valid_bots)))
+                            await asyncio.sleep(0.7)
+                        except:
+                            pass
                     if await self.check_spam():
                         await asyncio.sleep(5)
-                    if player_count < 2:
+                    if self.player_count < 2:
                         raise Exception('not enough players')
+                        break
+                    if await self.drawing_check():
+                        raise Exception('chosen to draw')
                         break
             except Exception as e:
                 if ('NoneType' in str(e)) or ('Node' in str(e)):
                     self.queue.put("EXCEPTION: force disconnect due to kick")
+                    self.player_count = 1
                 else:
                     self.queue.put("EXCEPTION: "+str(e))
                 break
 
     async def chat_updates(self):
         chat_history = ''
-        while True:
+        while int(str(datetime.now() - self.since_last_msg_time)[2:4]) < 1:
             try:
-                player_count = await self.get_player_count()
-                if player_count < 2:
+                if self.player_count < 2:
                     break
-                if self.player_count != player_count:
-                    self.player_count = player_count
-                    self.queue.put(f'[{self.player_count} PLAYERS_COUNT]')
+                if await self.drawing_check():
+                    break
                 chat = await self.page.evaluate('() => document.getElementById("boxMessages").innerText')
                 chat = chat.split('\n')
-                chat = [sub.replace(self.name,'YOU') for sub in chat]
+                # chat = [sub.replace(self.name,'YOU') for sub in chat]
                 if chat != chat_history:
                     data = chat[len(chat_history):]
                     self.queue.put(data)
+                    self.since_last_msg_time = datetime.now()
                     chat_history = chat
             except Exception as e:
                 break
@@ -164,21 +199,23 @@ class bot:
                         await self.join()
                         await asyncio.sleep(10)
                         try:
-                            player_count = await self.get_player_count()
+                            await self.get_player_count()
                         except Exception as e:
-                            player_count = 1
+                            self.player_count = 1
                             continue
-                        if player_count > 1:
+                        if self.player_count > 1:
                             self.queue.put('JOINED GAME')
+                            self.since_last_msg_time = datetime.now()
                             break
                     await asyncio.gather(self.chat_spam(),self.chat_updates())
                     self.queue.put('LEFT GAME')
                     self.player_count = 0
                     self.player_list = []
+                    self.valid_bots = []
             except Exception as e:
                 self.queue.put("EXCEPTION: "+str(e))
-                await self.browser.close()
-                continue
+            await self.browser.close()
+            continue
 
 def interface(*args):
 	f = Form()
@@ -198,7 +235,7 @@ threads = []
 for i in range(count):
     q = queue.Queue()
     queues.append(q)
-    b = bot(queue=q,name=name)
+    b = bot(queue=q,name=random.choice(names))
     thread = Thread(target=loop_thread_run,args=(b,))
     threads.append(thread)
     thread.start()
